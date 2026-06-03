@@ -106,8 +106,6 @@
   <div id="result-banner"></div>
   <div id="error-msg"></div>
 
-  <!-- BarcodeDetector polyfill for Safari -->
-  <script src="https://cdn.jsdelivr.net/npm/barcode-detector@2/dist/es/polyfill.min.js"></script>
   <script>
     const video = document.getElementById('video');
     const status = document.getElementById('status');
@@ -115,22 +113,25 @@
     const errorMsg = document.getElementById('error-msg');
 
     let detector;
-    let scanning = false;
     let cooldown = false;
-    let animFrame;
+    let isDetecting = false;
 
     async function init() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } }
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
         });
         video.srcObject = stream;
         await video.play();
 
+        if (!('BarcodeDetector' in window)) {
+          errorMsg.textContent = 'このブラウザはバーコード検出に対応していません。Chrome最新版をお使いください。';
+          return;
+        }
+
         detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
         status.textContent = 'バーコードをフレームに合わせてください';
-        scanning = true;
-        scan();
+        setInterval(scan, 300);
       } catch (e) {
         errorMsg.textContent = 'カメラへのアクセスが必要です。ブラウザの設定を確認してください。';
         status.textContent = '';
@@ -138,18 +139,17 @@
     }
 
     async function scan() {
-      if (!scanning) return;
-      animFrame = requestAnimationFrame(scan);
-
-      if (cooldown || video.readyState < 2) return;
+      if (cooldown || isDetecting || video.readyState < 2) return;
+      isDetecting = true;
 
       try {
         const barcodes = await detector.detect(video);
         if (barcodes.length > 0) {
-          const code = barcodes[0].rawValue;
-          triggerResult(code);
+          triggerResult(barcodes[0].rawValue);
         }
       } catch (_) {}
+
+      isDetecting = false;
     }
 
     function triggerResult(code) {
