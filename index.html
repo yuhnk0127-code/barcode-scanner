@@ -98,6 +98,32 @@
       text-align: center;
       padding: 16px;
     }
+    #result-frame {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+      display: none;
+      z-index: 20;
+    }
+    #result-frame.visible { display: block; }
+    #rescan-btn {
+      position: fixed;
+      top: env(safe-area-inset-top, 12px);
+      right: 12px;
+      z-index: 21;
+      display: none;
+      padding: 10px 16px;
+      border-radius: 20px;
+      border: none;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    #rescan-btn.visible { display: block; }
   </style>
 </head>
 <body>
@@ -117,6 +143,9 @@
   </div>
   <div id="error-msg"></div>
 
+  <iframe id="result-frame" allow="fullscreen"></iframe>
+  <button id="rescan-btn">× もう一度</button>
+
   <script>
     window.addEventListener('error', (e) => {
       const el = document.getElementById('error-msg');
@@ -135,6 +164,8 @@
     const errorMsg = document.getElementById('error-msg');
     const zoomContainer = document.getElementById('zoom-container');
     const zoomSlider = document.getElementById('zoom-slider');
+    const resultFrame = document.getElementById('result-frame');
+    const rescanBtn = document.getElementById('rescan-btn');
 
     let detector;
     let cooldown = false;
@@ -186,8 +217,17 @@
 
     function triggerResult(code) {
       cooldown = true;
-      window.location.href = `/go/${encodeURIComponent(code)}`;
+      resultFrame.src = `https://www.google.com/search?igu=1&tbm=isch&q=${encodeURIComponent(code)}`;
+      resultFrame.classList.add('visible');
+      rescanBtn.classList.add('visible');
     }
+
+    rescanBtn.addEventListener('click', () => {
+      resultFrame.classList.remove('visible');
+      rescanBtn.classList.remove('visible');
+      resultFrame.src = 'about:blank';
+      cooldown = false;
+    });
 
     init();
   </script>
