@@ -106,7 +106,9 @@
   <div id="result-banner"></div>
   <div id="error-msg"></div>
 
-  <script>
+  <script type="module">
+    import { BarcodeDetector } from 'https://cdn.jsdelivr.net/npm/barcode-detector@2/+esm';
+
     const video = document.getElementById('video');
     const status = document.getElementById('status');
     const resultBanner = document.getElementById('result-banner');
@@ -123,11 +125,6 @@
         });
         video.srcObject = stream;
         await video.play();
-
-        if (!('BarcodeDetector' in window)) {
-          errorMsg.textContent = 'このブラウザはバーコード検出に対応していません。Chrome最新版をお使いください。';
-          return;
-        }
 
         detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
         status.textContent = 'バーコードをフレームに合わせてください';
