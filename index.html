@@ -155,15 +155,7 @@
       resultBanner.textContent = code;
       resultBanner.style.display = 'block';
 
-      setTimeout(() => {
-        window.open(`https://www.google.com/search?q=${encodeURIComponent(code)}&tbm=isch`, '_blank');
-      }, 300);
-
-      setTimeout(() => {
-        resultBanner.style.display = 'none';
-        status.textContent = 'バーコードをフレームに合わせてください';
-        cooldown = false;
-      }, 3000);
+      window.location.href = `https://www.google.com/search?q=${encodeURIComponent(code)}&tbm=isch`;
     }
 
     init();
