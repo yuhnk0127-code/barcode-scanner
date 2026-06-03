@@ -186,7 +186,7 @@
 
     function triggerResult(code) {
       cooldown = true;
-      window.location.href = `https://www.google.com/search?q=${encodeURIComponent(code)}&tbm=isch`;
+      window.location.href = `/go/${encodeURIComponent(code)}`;
     }
 
     init();
