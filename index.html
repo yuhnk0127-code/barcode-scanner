@@ -238,21 +238,8 @@
 
     function triggerResult(code) {
       cooldown = true;
-      lastCode = code;
-      resultCode.textContent = code;
-      resultModal.classList.add('visible');
-      status.textContent = '読み取り成功！';
+      window.location.href = `https://www.google.com/search?q=${encodeURIComponent(code)}&tbm=isch`;
     }
-
-    btnSearch.addEventListener('click', () => {
-      window.location.href = `https://www.google.com/search?q=${encodeURIComponent(lastCode)}&tbm=isch`;
-    });
-
-    btnCancel.addEventListener('click', () => {
-      resultModal.classList.remove('visible');
-      status.textContent = 'バーコードをフレームに合わせてください';
-      cooldown = false;
-    });
 
     init();
   </script>
