@@ -111,7 +111,7 @@
     #result-frame.visible { display: block; }
     #rescan-btn {
       position: fixed;
-      top: env(safe-area-inset-top, 12px);
+      bottom: calc(env(safe-area-inset-bottom, 12px) + 12px);
       right: 12px;
       z-index: 21;
       display: none;
