@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>バーコードスキャナー</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, sans-serif;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #video-container {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      aspect-ratio: 3/4;
+    }
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .scan-frame {
+      width: 70%;
+      aspect-ratio: 3/1;
+      border: 2px solid rgba(255,255,255,0.8);
+      border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+      position: relative;
+    }
+    .scan-line {
+      position: absolute;
+      left: 4px; right: 4px;
+      height: 2px;
+      background: #4ade80;
+      animation: scan 2s linear infinite;
+      border-radius: 2px;
+    }
+    @keyframes scan {
+      0%   { top: 8px; opacity: 1; }
+      90%  { top: calc(100% - 10px); opacity: 1; }
+      100% { top: calc(100% - 10px); opacity: 0; }
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 15px;
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      padding: 0 16px;
+      min-height: 44px;
+    }
+    #result-banner {
+      display: none;
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #4ade80;
+      color: #000;
+      font-weight: 700;
+      font-size: 18px;
+      padding: 12px 28px;
+      border-radius: 32px;
+      white-space: nowrap;
+      animation: pop 0.2s ease-out;
+    }
+    @keyframes pop {
+      from { transform: translateX(-50%) scale(0.85); opacity: 0; }
+      to   { transform: translateX(-50%) scale(1);    opacity: 1; }
+    }
+    #error-msg {
+      color: #f87171;
+      font-size: 14px;
+      text-align: center;
+      padding: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="video-container">
+    <video id="video" autoplay playsinline muted></video>
+    <div id="overlay">
+      <div class="scan-frame">
+        <div class="scan-line"></div>
+      </div>
+    </div>
+  </div>
+  <div id="status">カメラを起動中...</div>
+  <div id="result-banner"></div>
+  <div id="error-msg"></div>
+
+  <!-- BarcodeDetector polyfill for Safari -->
+  <script src="https://cdn.jsdelivr.net/npm/barcode-detector@2/dist/es/polyfill.min.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    const resultBanner = document.getElementById('result-banner');
+    const errorMsg = document.getElementById('error-msg');
+
+    let detector;
+    let scanning = false;
+    let cooldown = false;
+    let animFrame;
+
+    async function init() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } }
+        });
+        video.srcObject = stream;
+        await video.play();
+
+        detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+        status.textContent = 'バーコードをフレームに合わせてください';
+        scanning = true;
+        scan();
+      } catch (e) {
+        errorMsg.textContent = 'カメラへのアクセスが必要です。ブラウザの設定を確認してください。';
+        status.textContent = '';
+      }
+    }
+
+    async function scan() {
+      if (!scanning) return;
+      animFrame = requestAnimationFrame(scan);
+
+      if (cooldown || video.readyState < 2) return;
+
+      try {
+        const barcodes = await detector.detect(video);
+        if (barcodes.length > 0) {
+          const code = barcodes[0].rawValue;
+          triggerResult(code);
+        }
+      } catch (_) {}
+    }
+
+    function triggerResult(code) {
+      cooldown = true;
+      status.textContent = '読み取り成功！';
+      resultBanner.textContent = code;
+      resultBanner.style.display = 'block';
+
+      setTimeout(() => {
+        window.open(`https://www.google.com/search?q=${encodeURIComponent(code)}&tbm=isch`, '_blank');
+      }, 300);
+
+      setTimeout(() => {
+        resultBanner.style.display = 'none';
+        status.textContent = 'バーコードをフレームに合わせてください';
+        cooldown = false;
+      }, 3000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
