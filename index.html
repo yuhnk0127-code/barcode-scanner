@@ -59,32 +59,89 @@
       100% { top: calc(100% - 10px); opacity: 0; }
     }
     #status {
-      margin-top: 20px;
+      margin-top: 16px;
       font-size: 15px;
       color: rgba(255,255,255,0.7);
       text-align: center;
       padding: 0 16px;
-      min-height: 44px;
+      min-height: 24px;
     }
-    #result-banner {
+    #zoom-container {
+      display: none;
+      width: 100%;
+      max-width: 480px;
+      padding: 12px 24px 0;
+      align-items: center;
+      gap: 12px;
+    }
+    #zoom-container.visible { display: flex; }
+    #zoom-container span { font-size: 12px; color: rgba(255,255,255,0.5); white-space: nowrap; }
+    #zoom-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.3);
+      outline: none;
+    }
+    #zoom-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    /* 読み取り結果モーダル */
+    #result-modal {
       display: none;
       position: fixed;
-      bottom: 32px;
-      left: 50%;
-      transform: translateX(-50%);
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 10;
+    }
+    #result-modal.visible { display: flex; }
+    #result-sheet {
+      background: #1c1c1e;
+      border-radius: 20px 20px 0 0;
+      padding: 24px 24px 40px;
+      width: 100%;
+      max-width: 480px;
+      animation: slideUp 0.25s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    #result-code {
+      font-size: 22px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
+    .result-btn {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    #btn-search {
       background: #4ade80;
       color: #000;
-      font-weight: 700;
-      font-size: 18px;
-      padding: 12px 28px;
-      border-radius: 32px;
-      white-space: nowrap;
-      animation: pop 0.2s ease-out;
     }
-    @keyframes pop {
-      from { transform: translateX(-50%) scale(0.85); opacity: 0; }
-      to   { transform: translateX(-50%) scale(1);    opacity: 1; }
+    #btn-cancel {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
     }
+
     #error-msg {
       color: #f87171;
       font-size: 14px;
@@ -103,20 +160,39 @@
     </div>
   </div>
   <div id="status">カメラを起動中...</div>
-  <div id="result-banner"></div>
+  <div id="zoom-container">
+    <span>1×</span>
+    <input id="zoom-slider" type="range" min="1" max="5" step="0.1" value="1">
+    <span>5×</span>
+  </div>
   <div id="error-msg"></div>
+
+  <div id="result-modal">
+    <div id="result-sheet">
+      <div id="result-code"></div>
+      <button class="result-btn" id="btn-search">Google画像検索を開く</button>
+      <button class="result-btn" id="btn-cancel">キャンセル</button>
+    </div>
+  </div>
 
   <script type="module">
     import { BarcodeDetector } from 'https://cdn.jsdelivr.net/npm/barcode-detector@2/+esm';
 
     const video = document.getElementById('video');
     const status = document.getElementById('status');
-    const resultBanner = document.getElementById('result-banner');
     const errorMsg = document.getElementById('error-msg');
+    const zoomContainer = document.getElementById('zoom-container');
+    const zoomSlider = document.getElementById('zoom-slider');
+    const resultModal = document.getElementById('result-modal');
+    const resultCode = document.getElementById('result-code');
+    const btnSearch = document.getElementById('btn-search');
+    const btnCancel = document.getElementById('btn-cancel');
 
     let detector;
     let cooldown = false;
     let isDetecting = false;
+    let track;
+    let lastCode = '';
 
     async function init() {
       try {
@@ -125,6 +201,19 @@
         });
         video.srcObject = stream;
         await video.play();
+
+        track = stream.getVideoTracks()[0];
+        const caps = track.getCapabilities?.();
+        if (caps?.zoom) {
+          zoomSlider.min = caps.zoom.min;
+          zoomSlider.max = caps.zoom.max;
+          zoomSlider.step = (caps.zoom.max - caps.zoom.min) / 50;
+          zoomSlider.value = caps.zoom.min;
+          zoomContainer.classList.add('visible');
+          zoomSlider.addEventListener('input', () => {
+            track.applyConstraints({ advanced: [{ zoom: parseFloat(zoomSlider.value) }] });
+          });
+        }
 
         detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
         status.textContent = 'バーコードをフレームに合わせてください';
@@ -138,25 +227,32 @@
     async function scan() {
       if (cooldown || isDetecting || video.readyState < 2) return;
       isDetecting = true;
-
       try {
         const barcodes = await detector.detect(video);
         if (barcodes.length > 0) {
           triggerResult(barcodes[0].rawValue);
         }
       } catch (_) {}
-
       isDetecting = false;
     }
 
     function triggerResult(code) {
       cooldown = true;
+      lastCode = code;
+      resultCode.textContent = code;
+      resultModal.classList.add('visible');
       status.textContent = '読み取り成功！';
-      resultBanner.textContent = code;
-      resultBanner.style.display = 'block';
-
-      window.location.href = `https://www.google.com/search?q=${encodeURIComponent(code)}&tbm=isch`;
     }
+
+    btnSearch.addEventListener('click', () => {
+      window.location.href = `https://www.google.com/search?q=${encodeURIComponent(lastCode)}&tbm=isch`;
+    });
+
+    btnCancel.addEventListener('click', () => {
+      resultModal.classList.remove('visible');
+      status.textContent = 'バーコードをフレームに合わせてください';
+      cooldown = false;
+    });
 
     init();
   </script>
