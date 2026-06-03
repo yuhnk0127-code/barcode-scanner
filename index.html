@@ -92,56 +92,6 @@
       cursor: pointer;
     }
 
-    /* 読み取り結果モーダル */
-    #result-modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.75);
-      align-items: flex-end;
-      justify-content: center;
-      z-index: 10;
-    }
-    #result-modal.visible { display: flex; }
-    #result-sheet {
-      background: #1c1c1e;
-      border-radius: 20px 20px 0 0;
-      padding: 24px 24px 40px;
-      width: 100%;
-      max-width: 480px;
-      animation: slideUp 0.25s ease-out;
-    }
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to   { transform: translateY(0); }
-    }
-    #result-code {
-      font-size: 22px;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 20px;
-      letter-spacing: 2px;
-    }
-    .result-btn {
-      display: block;
-      width: 100%;
-      padding: 16px;
-      border-radius: 12px;
-      border: none;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-bottom: 10px;
-    }
-    #btn-search {
-      background: #4ade80;
-      color: #000;
-    }
-    #btn-cancel {
-      background: rgba(255,255,255,0.1);
-      color: #fff;
-    }
-
     #error-msg {
       color: #f87171;
       font-size: 14px;
@@ -167,26 +117,24 @@
   </div>
   <div id="error-msg"></div>
 
-  <div id="result-modal">
-    <div id="result-sheet">
-      <div id="result-code"></div>
-      <button class="result-btn" id="btn-search">Google画像検索を開く</button>
-      <button class="result-btn" id="btn-cancel">キャンセル</button>
-    </div>
-  </div>
-
+  <script>
+    window.addEventListener('error', (e) => {
+      const el = document.getElementById('error-msg');
+      if (el) el.textContent = '読み込みエラー: ' + (e.message || e.error || e);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      const el = document.getElementById('error-msg');
+      if (el) el.textContent = '読み込みエラー: ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
+    });
+  </script>
   <script type="module">
-    import { BarcodeDetector } from 'https://cdn.jsdelivr.net/npm/barcode-detector@2/+esm';
+    import { BarcodeDetector } from 'https://cdn.jsdelivr.net/npm/barcode-detector@2/dist/es/pure.min.js';
 
     const video = document.getElementById('video');
     const status = document.getElementById('status');
     const errorMsg = document.getElementById('error-msg');
     const zoomContainer = document.getElementById('zoom-container');
     const zoomSlider = document.getElementById('zoom-slider');
-    const resultModal = document.getElementById('result-modal');
-    const resultCode = document.getElementById('result-code');
-    const btnSearch = document.getElementById('btn-search');
-    const btnCancel = document.getElementById('btn-cancel');
 
     let detector;
     let cooldown = false;
@@ -219,7 +167,7 @@
         status.textContent = 'バーコードをフレームに合わせてください';
         setInterval(scan, 300);
       } catch (e) {
-        errorMsg.textContent = 'カメラへのアクセスが必要です。ブラウザの設定を確認してください。';
+        errorMsg.textContent = 'エラー (' + (e.name || '') + '): ' + (e.message || e);
         status.textContent = '';
       }
     }
